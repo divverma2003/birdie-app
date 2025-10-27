@@ -1,10 +1,9 @@
 import express from "express";
 import authRoutes from "./routes/auth.routes.js";
-import dotenv from "dotenv";
+import { ENV } from "./lib/env.js";
 import connectMongoDB from "./lib/connectMongoDB.js";
-dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = ENV.PORT || 5000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
