@@ -120,7 +120,7 @@ export const login = async (req, res) => {
 
     generateTokenAndSetCookie(user._id, res);
     return res.status(200).json({
-      message: "Loggedn in successfully",
+      message: "Logged in successfully",
       _id: user._id,
       fullName: user.fullName,
       username: user.username,
@@ -155,11 +155,11 @@ export const logout = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    // req.userId is set in the auth.middleware.js after verifying the JWT token
+    // req.user._id is set in the auth.middleware.js after verifying the JWT token
     // only select user fields except password
-    const user = await User.findById(req.userId).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
 
-    res.status(200).json(user);
+    res.status(200).json({ message: "User fetched successfully", user });
   } catch (error) {
     console.log("Error in getMe authController:", error.message);
     return res.status(500).json({

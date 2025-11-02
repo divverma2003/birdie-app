@@ -13,5 +13,7 @@ export const generateTokenAndSetCookie = (userId, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
+  console.log("Generated JWT Token:", token); // Log the generated token for debugging
+
   return token;
 };

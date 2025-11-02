@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
-import { ENV } from "../config/env.config.js";
+import { ENV } from "../lib/env.js";
 import User from "../models/user.model.js";
-import Notification from "../models/notifications.model.js";
+import Notification from "../models/notification.model.js";
 import { sendEmailChangeNotification } from "../emails/emailHandlers.js";
 
 export const getUserProfile = async (req, res) => {
@@ -14,7 +14,7 @@ export const getUserProfile = async (req, res) => {
         .status(404)
         .json({ message: "User not found", error: "User not found" });
 
-    return res.status(200).json({ user });
+    return res.status(200).json({ message: "User found", user });
   } catch (error) {
     console.log("Error in getUserProfile userController:", error.message);
     return res.status(500).json({
@@ -54,6 +54,10 @@ export const followUnfollowUser = async (req, res) => {
       await User.findByIfAndUpdate(req.user._id, {
         $pull: { following: userToModify._id },
       });
+
+      return res
+        .status(200)
+        .json({ message: "User unfollowed successfully", isFollowing: false });
     } else {
       // if not following, then follow
       await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
@@ -104,7 +108,10 @@ export const getSuggestedUsers = async (req, res) => {
       },
     ]);
 
-    return res.status(200).json(suggestedUsers);
+    return res.status(200).json({
+      message: "Suggested users retrieved successfully",
+      suggestedUsers,
+    });
   } catch (error) {
     console.log("Error in getSuggestedUsers userController:", error.message);
     return res.status(500).json({
@@ -195,7 +202,16 @@ export const updateUser = async (req, res) => {
     user.coverPicture = coverPicture || user.coverPicture;
     await user.save();
 
-    // todo: send email if email is changed
+    try {
+      await sendEmailChangeNotification(
+        user.email,
+        user.fullName,
+        user.username,
+        ENV.CLIENT_URL
+      );
+    } catch (error) {
+      console.error("Error sending email change notification:", error);
+    }
     return res.status(200).json({
       message: "User updated successfully",
       user: {
