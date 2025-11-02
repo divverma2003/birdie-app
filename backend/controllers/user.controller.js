@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import { ENV } from "../lib/env.js";
 import User from "../models/user.model.js";
+import mongoose from "mongoose";
 import Notification from "../models/notification.model.js";
 import { sendEmailChangeNotification } from "../emails/emailHandlers.js";
 
@@ -87,7 +88,7 @@ export const followUnfollowUser = async (req, res) => {
 
 export const getSuggestedUsers = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = new mongoose.Types.ObjectId(req.user._id);
     const user = await User.findById(userId);
     const followingIds = user.following.map(
       (id) => new mongoose.Types.ObjectId(id)
@@ -96,8 +97,10 @@ export const getSuggestedUsers = async (req, res) => {
     const suggestedUsers = await User.aggregate([
       {
         $match: {
-          _id: { $ne: userId }, // exclude current user
-          _id: { $nin: followingIds }, // exclude users already followed
+          $and: [
+            { _id: { $ne: userId } }, // exclude current user
+            { _id: { $nin: followingIds } }, // exclude users already followed
+          ],
         },
       },
       { $sample: { size: 4 } }, // random sample directly
@@ -181,18 +184,7 @@ export const updateUser = async (req, res) => {
       user.coverPictureId = uploadCoverPicture.public_id;
     }
 
-    if (email && email !== user.email) {
-      try {
-        await sendEmailChangeNotification(
-          email,
-          user.fullName,
-          user.username,
-          ENV.CLIENT_URL
-        );
-      } catch (error) {
-        console.error("Error sending email change notification:", error);
-      }
-    }
+    const emailChanged = email && email !== user.email;
 
     user.fullName = fullName || user.fullName;
     user.email = email || user.email;
@@ -202,6 +194,19 @@ export const updateUser = async (req, res) => {
     user.profilePicture = profilePicture || user.profilePicture;
     user.coverPicture = coverPicture || user.coverPicture;
     await user.save();
+
+    if (emailChanged) {
+      try {
+        await sendEmailChangeNotification(
+          user.email,
+          user.fullName,
+          user.username,
+          ENV.CLIENT_URL
+        );
+      } catch (error) {
+        console.error("Error sending email change notification:", error);
+      }
+    }
 
     return res.status(200).json({
       message: "User updated successfully",
