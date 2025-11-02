@@ -22,7 +22,6 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
-    console.log("Authenticated user:", user);
     req.user = user;
 
     next();

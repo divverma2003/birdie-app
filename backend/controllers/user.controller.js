@@ -51,7 +51,7 @@ export const followUnfollowUser = async (req, res) => {
       // remove as follower from userToModify
       await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id } });
       // remove from following of currentUser
-      await User.findByIfAndUpdate(req.user._id, {
+      await User.findByIdAndUpdate(req.user._id, {
         $pull: { following: userToModify._id },
       });
 
@@ -163,12 +163,13 @@ export const updateUser = async (req, res) => {
         if (user.profilePicture) {
           await cloudinary.uploader.destroy(user.profilePictureId);
         }
+
+        const uploadProfilePicture = await cloudinary.uploader.upload(
+          profilePicture
+        );
+        profilePicture = uploadProfilePicture.secure_url;
+        user.profilePictureId = uploadProfilePicture.public_id; // for easy deletion later
       }
-      const uploadProfilePicture = await cloudinary.uploader.upload(
-        profilePicture
-      );
-      profilePicture = uploadProfilePicture.secure_url;
-      user.profilePictureId = uploadProfilePicture.public_id; // for easy deletion later
     }
 
     if (coverPicture) {
@@ -183,7 +184,7 @@ export const updateUser = async (req, res) => {
     if (email && email !== user.email) {
       try {
         await sendEmailChangeNotification(
-          user.email,
+          email,
           user.fullName,
           user.username,
           ENV.CLIENT_URL
@@ -202,16 +203,6 @@ export const updateUser = async (req, res) => {
     user.coverPicture = coverPicture || user.coverPicture;
     await user.save();
 
-    try {
-      await sendEmailChangeNotification(
-        user.email,
-        user.fullName,
-        user.username,
-        ENV.CLIENT_URL
-      );
-    } catch (error) {
-      console.error("Error sending email change notification:", error);
-    }
     return res.status(200).json({
       message: "User updated successfully",
       user: {
