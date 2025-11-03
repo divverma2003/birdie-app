@@ -1,7 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 
-import { ENV } from "../lib/env.js";
-
 import User from "../models/user.model.js";
 import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
@@ -128,6 +126,103 @@ export const commentOnPost = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in commentOnPost postController:", error.message);
+    return res.status(500).json({
+      message: error.message || "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const commentId = req.params.commentId;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+        error: "Post not found",
+      });
+    }
+
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({
+        message: "Comment not found",
+        error: "Comment not found",
+      });
+    }
+
+    if (comment.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "You are not authorized to delete this comment",
+        error: "Unauthorized",
+      });
+    }
+
+    post.comments = post.comments.filter(
+      (comment) => comment._id.toString() !== commentId.toString()
+    );
+    await post.save();
+
+    return res.status(200).json({
+      message: "Comment deleted successfully",
+    });
+  } catch (error) {
+    console.log("Error in deleteComment postController:", error.message);
+    return res.status(500).json({
+      message: error.message || "Internal server error",
+      error: error.message,
+    });
+  }
+};
+export const updatePost = async (req, res) => {
+  try {
+    const { text } = req.body;
+    let { img } = req.body;
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+        error: "Post not found",
+      });
+    }
+
+    if (post.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        message: "You are not authorized to edit this post",
+        error: "Unauthorized",
+      });
+    }
+
+    if (!text && !img) {
+      return res.status(400).json({
+        message: "Post cannot be empty. Include text or an image.",
+        error: "Post cannot be empty",
+      });
+    }
+
+    if (img) {
+      if (post.img && img !== post.img) {
+        await cloudinary.uploader.destroy(post.imgId);
+      }
+      const uploadResponse = await cloudinary.uploader.upload(img);
+      post.imgId = uploadResponse.public_id;
+      post.img = uploadResponse.secure_url;
+    }
+    post.text = text || post.text;
+    await post.save();
+
+    return res.status(200).json({
+      message: "Post updated successfully",
+      post,
+    });
+  } catch (error) {
+    console.log("Error in updatePost postController:", error.message);
     return res.status(500).json({
       message: error.message || "Internal server error",
       error: error.message,

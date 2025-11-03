@@ -140,7 +140,7 @@ export const updateUser = async (req, res) => {
     ) {
       return res.status(400).json({
         message:
-          "Both current and new passwords are required to change password",
+          "Please provide both current and new passwords to change your password",
         error: "Both current and new passwords are required to change password",
       });
     }
@@ -165,6 +165,7 @@ export const updateUser = async (req, res) => {
       if (profilePicture) {
         if (user.profilePicture) {
           await cloudinary.uploader.destroy(user.profilePictureId);
+          // (user.profilePicture.split("/").pop().split(".").[0]) <-- alternative to user.profilePictureId
         }
 
         const uploadProfilePicture = await cloudinary.uploader.upload(
